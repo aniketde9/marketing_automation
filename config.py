@@ -19,7 +19,7 @@ SORA_DAILY_LIMIT = int(os.getenv("SORA_DAILY_LIMIT", 30))
 
 # Model Configuration
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
-SORA_DURATION = int(os.getenv("SORA_DURATION", 15))  # 15 seconds
+SORA_DURATION = int(os.getenv("SORA_DURATION", 8))  # 8 seconds
 SORA_RESOLUTION = os.getenv("SORA_RESOLUTION", "720p")
 
 # Google Sheets Configuration

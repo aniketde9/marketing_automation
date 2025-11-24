@@ -39,9 +39,50 @@ class SheetsManager:
         
         return data[:limit]
     
+    def write_single_content(self, content_dict):
+        """
+        Write a single piece of generated content to Generated_Posts sheet IMMEDIATELY.
+        
+        Args:
+            content_dict: Dictionary with generated content
+        """
+        try:
+            from utils import logger
+            generated_sheet = self.sheet.worksheet(SHEETS_CONFIG["generated_sheet"])
+            
+            # Handle carousel content (has linkedin_carousel and instagram_carousel)
+            carousel_outline = content_dict.get("carousel_outline", "")
+            if not carousel_outline:
+                # Combine LinkedIn and Instagram carousels if present
+                linkedin_carousel = content_dict.get("linkedin_carousel", "")
+                instagram_carousel = content_dict.get("instagram_carousel", "")
+                if linkedin_carousel or instagram_carousel:
+                    carousel_outline = f"LinkedIn:\n{linkedin_carousel}\n\nInstagram:\n{instagram_carousel}"
+            
+            # Prepare single row
+            row = [
+                content_dict.get("topic", ""),
+                content_dict.get("x_thread", ""),
+                content_dict.get("x_post", ""),
+                content_dict.get("linkedin_post", ""),
+                content_dict.get("instagram_caption", ""),
+                carousel_outline,
+                content_dict.get("content_type", "Generated")
+            ]
+            
+            # Write immediately
+            generated_sheet.append_row(row)
+            logger.info(f"✅ Wrote to sheet: {content_dict.get('topic', '')[:50]}")
+            print(f"✅ Wrote to sheet: {content_dict.get('topic', '')[:50]}")
+            
+        except Exception as e:
+            from utils import logger
+            logger.error(f"❌ Error writing to sheet: {e}", exc_info=True)
+            print(f"❌ Error writing to sheet: {e}")
+    
     def write_generated_content(self, content_list):
         """
-        Write generated content to Generated_Posts sheet.
+        Write generated content to Generated_Posts sheet (batch method - kept for compatibility).
         
         Args:
             content_list: List of dictionaries with generated content
@@ -67,7 +108,7 @@ class SheetsManager:
                 content.get("linkedin_post", ""),
                 content.get("instagram_caption", ""),
                 carousel_outline,
-                "Generated"
+                content.get("content_type", "Generated")
             ]
             rows.append(row)
         

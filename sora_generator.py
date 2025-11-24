@@ -88,8 +88,14 @@ class SoraGenerator:
             logger.error(f"[SORA] Error checking status for {video_id}: {e}", exc_info=True)
             return {"status": "error", "video_id": video_id}
     
-    def generate_batch(self, topics_list):
-        """Generate videos for batch of topics."""
+    def generate_batch(self, topics_list, sheets_manager=None):
+        """
+        Generate videos for batch of topics.
+        
+        Args:
+            topics_list: List of topics
+            sheets_manager: Optional SheetsManager instance for immediate writes
+        """
         video_prompts = []
         topic_index = 0
         
@@ -141,14 +147,24 @@ class SoraGenerator:
                         # Use the official write_to_file method
                         status_info["content"].write_to_file(filepath)
                         
-                        completed_videos.append({
+                        video_dict = {
                             **video_info,
                             "status": "completed",
                             "filepath": filepath
-                        })
+                        }
+                        
+                        completed_videos.append(video_dict)
+                        
+                        # WRITE TO SHEET IMMEDIATELY if sheets_manager provided
+                        if sheets_manager:
+                            sheets_manager.write_video_info(video_dict)
+                            logger.info(f"[SORA] ✅ Saved & logged to sheet: {filename}")
+                            print(f"✅ Saved & logged to sheet: {filename}")
+                        else:
+                            logger.info(f"[SORA] ✅ Saved: {filename}")
+                            print(f"✅ Saved: {filename}")
+                        
                         video_ids.remove(video_info)
-                        logger.info(f"[SORA] ✅ Saved: {filename}")
-                        print(f"✅ Saved: {filename}")
                         
                     except Exception as e:
                         logger.error(f"[SORA] Error saving {filename}: {e}", exc_info=True)

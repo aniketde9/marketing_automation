@@ -96,7 +96,8 @@ def main():
         logger.info(f"[VIDEO] Starting video generation for {len(video_topics)} topics")
         
         try:
-            videos = sora.generate_batch(video_topics)
+            # Pass sheets_manager for immediate writes
+            videos = sora.generate_batch(video_topics, sheets_manager=sheets)
             
             # Check which topics failed
             successful_topics = [v.get("topic") for v in videos if v.get("status") == "completed" and v.get("topic")]
@@ -106,14 +107,9 @@ def main():
                 log_failure(topic, "Video", "Video generation failed or timed out")
                 sheets.write_failed_topic(topic, "Video", "Video generation failed or timed out")
             
-            # Save
+            # Videos are already written to sheet immediately by sora_generator
+            # Just save JSON backup
             save_to_json(videos, f"videos_{timestamp}.json")
-            
-            # Write to sheet
-            for video in videos:
-                sheets.write_video_info(video)
-            
-            # Videos are already downloaded by sora_generator.py
                     
         except Exception as e:
             logger.error(f"[VIDEO] Batch generation failed: {e}", exc_info=True)
@@ -144,12 +140,24 @@ def main():
                 response = gemini.model.generate_content(prompt)
                 thread_text = response.text.strip()
                 
-                thread_content.append({
+                content_dict = {
                     "topic": topic,
                     "x_thread": thread_text,
+                    "x_post": "",
+                    "linkedin_post": "",
+                    "instagram_caption": "",
+                    "carousel_outline": "",
                     "content_type": "X Thread"
-                })
-                logger.info(f"[THREAD] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                thread_content.append(content_dict)
+                
+                logger.info(f"[THREAD] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[THREAD] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ THREAD failed for topic: {topic} → {e}")
@@ -161,8 +169,9 @@ def main():
                 # continue automatically to next topic
                 continue
         
-        # Save
-        save_to_json(thread_content, f"x_threads_{timestamp}.json")
+        # Save JSON backup
+        if thread_content:
+            save_to_json(thread_content, f"x_threads_{timestamp}.json")
     
     # ============================================================
     # STEP 3: GENERATE CAROUSELS (Rows 52-71)
@@ -188,13 +197,25 @@ def main():
                 gemini._rate_limit_wait()
                 instagram_carousel = gemini.model.generate_content(instagram_prompt).text.strip()
                 
-                carousel_content.append({
+                content_dict = {
                     "topic": topic,
+                    "x_thread": "",
+                    "x_post": "",
+                    "linkedin_post": "",
+                    "instagram_caption": "",
                     "linkedin_carousel": linkedin_carousel,
                     "instagram_carousel": instagram_carousel,
                     "content_type": "Carousel"
-                })
-                logger.info(f"[CAROUSEL] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                carousel_content.append(content_dict)
+                
+                logger.info(f"[CAROUSEL] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[CAROUSEL] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ CAROUSEL failed for topic: {topic} → {e}")
@@ -204,7 +225,9 @@ def main():
                 
                 continue
         
-        save_to_json(carousel_content, f"carousels_{timestamp}.json")
+        # Save JSON backup
+        if carousel_content:
+            save_to_json(carousel_content, f"carousels_{timestamp}.json")
     
     # ============================================================
     # STEP 4: GENERATE LINKEDIN POSTS (Rows 72-91)
@@ -224,12 +247,24 @@ def main():
                 prompt = get_linkedin_prompt(topic)
                 post_text = gemini.model.generate_content(prompt).text.strip()
                 
-                linkedin_content.append({
+                content_dict = {
                     "topic": topic,
+                    "x_thread": "",
+                    "x_post": "",
                     "linkedin_post": post_text,
+                    "instagram_caption": "",
+                    "carousel_outline": "",
                     "content_type": "LinkedIn Post"
-                })
-                logger.info(f"[LINKEDIN] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                linkedin_content.append(content_dict)
+                
+                logger.info(f"[LINKEDIN] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[LINKEDIN] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ LINKEDIN POST failed for topic: {topic} → {e}")
@@ -239,7 +274,9 @@ def main():
                 
                 continue
         
-        save_to_json(linkedin_content, f"linkedin_posts_{timestamp}.json")
+        # Save JSON backup
+        if linkedin_content:
+            save_to_json(linkedin_content, f"linkedin_posts_{timestamp}.json")
     
     # ============================================================
     # STEP 5: GENERATE X POSTS (Rows 92-111)
@@ -260,12 +297,24 @@ def main():
                 response = gemini.model.generate_content(prompt)
                 post_text = response.text.strip()
                 
-                x_post_content.append({
+                content_dict = {
                     "topic": topic,
+                    "x_thread": "",
                     "x_post": post_text,
+                    "linkedin_post": "",
+                    "instagram_caption": "",
+                    "carousel_outline": "",
                     "content_type": "X Post"
-                })
-                logger.info(f"[X POST] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                x_post_content.append(content_dict)
+                
+                logger.info(f"[X POST] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[X POST] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ X POST failed for topic: {topic} → {e}")
@@ -275,7 +324,9 @@ def main():
                 
                 continue
         
-        save_to_json(x_post_content, f"x_posts_{timestamp}.json")
+        # Save JSON backup
+        if x_post_content:
+            save_to_json(x_post_content, f"x_posts_{timestamp}.json")
     
     # ============================================================
     # STEP 6: GENERATE INSTAGRAM CAPTIONS (Rows 112-151)
@@ -296,12 +347,24 @@ def main():
                 response = gemini.model.generate_content(prompt)
                 caption_text = response.text.strip()
                 
-                ig_content.append({
+                content_dict = {
                     "topic": topic,
+                    "x_thread": "",
+                    "x_post": "",
+                    "linkedin_post": "",
                     "instagram_caption": caption_text,
+                    "carousel_outline": "",
                     "content_type": "Instagram Caption"
-                })
-                logger.info(f"[INSTAGRAM] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                ig_content.append(content_dict)
+                
+                logger.info(f"[INSTAGRAM] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[INSTAGRAM] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ INSTAGRAM CAPTION failed for topic: {topic} → {e}")
@@ -311,7 +374,9 @@ def main():
                 
                 continue
         
-        save_to_json(ig_content, f"instagram_captions_{timestamp}.json")
+        # Save JSON backup
+        if ig_content:
+            save_to_json(ig_content, f"instagram_captions_{timestamp}.json")
     
     # ============================================================
     # STEP 7: GENERATE MIXED (ALL FORMATS) (Rows 152-161)
@@ -322,9 +387,22 @@ def main():
     
     mixed_content = []
     if mixed_topics:
+        logger.info(f"[MIXED] Generating all formats for {len(mixed_topics)} topics")
+        
         try:
-            mixed_content = gemini.generate_all(mixed_topics, batch_size=5)
-            save_to_json(mixed_content, f"mixed_content_{timestamp}.json")
+            # This returns a list of content dicts with all 5 formats
+            batch_content = gemini.generate_all(mixed_topics, batch_size=5)
+            
+            # Write each one to sheet immediately
+            for content_dict in batch_content:
+                # Ensure content_type is set
+                if "content_type" not in content_dict:
+                    content_dict["content_type"] = "Mixed Content"
+                
+                sheets.write_single_content(content_dict)
+                mixed_content.append(content_dict)
+            
+            logger.info(f"[MIXED] ✅ Generated and wrote {len(batch_content)} mixed content pieces")
             
             # Check for failed topics in mixed content
             successful_topics = [c.get("topic") for c in mixed_content if c.get("topic")]
@@ -341,6 +419,10 @@ def main():
             for topic in mixed_topics:
                 log_failure(topic, "Mixed Content", f"Batch error: {str(e)}")
                 sheets.write_failed_topic(topic, "Mixed Content", f"Batch error: {str(e)}")
+        
+        # Save JSON backup
+        if mixed_content:
+            save_to_json(mixed_content, f"mixed_content_{timestamp}.json")
     
     # ============================================================
     # STEP 8: GENERATE SHORT POSTS (Rows 162-201)
@@ -368,13 +450,24 @@ def main():
                 ig_response = gemini.model.generate_content(ig_prompt)
                 ig_text = ig_response.text.strip()
                 
-                short_content.append({
+                content_dict = {
                     "topic": topic,
+                    "x_thread": "",
                     "x_post": x_text,
+                    "linkedin_post": "",
                     "instagram_caption": ig_text,
+                    "carousel_outline": "",
                     "content_type": "Short Post"
-                })
-                logger.info(f"[SHORT POST] Success for topic: {topic}")
+                }
+                
+                # WRITE TO SHEET IMMEDIATELY
+                sheets.write_single_content(content_dict)
+                
+                # Also keep in memory for JSON backup
+                short_content.append(content_dict)
+                
+                logger.info(f"[SHORT POST] ✅ Success for topic: {topic}")
+                
             except Exception as e:
                 logger.error(f"[SHORT POST] Error for topic '{topic}': {e}", exc_info=True)
                 print(f"❌ SHORT POST failed for topic: {topic} → {e}")
@@ -384,14 +477,18 @@ def main():
                 
                 continue
         
-        save_to_json(short_content, f"short_posts_{timestamp}.json")
+        # Save JSON backup
+        if short_content:
+            save_to_json(short_content, f"short_posts_{timestamp}.json")
     
     # ============================================================
-    # STEP 9: WRITE ALL TO GOOGLE SHEETS
+    # STEP 9: UPDATE TOPIC STATUSES
     # ============================================================
     
-    print("\n📊 Step 9: Writing all content to Google Sheets...")
+    print("\n📊 Step 9: Updating topic statuses...")
     
+    # All content has already been written to sheets immediately
+    # Now just update the status in Topics sheet
     all_content = (
         thread_content + 
         carousel_content + 
@@ -401,9 +498,6 @@ def main():
         mixed_content + 
         short_content
     )
-    
-    if all_content:
-        sheets.write_generated_content(all_content)
     
     # Update statuses
     for item in all_content:
