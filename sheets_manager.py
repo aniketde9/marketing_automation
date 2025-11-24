@@ -97,13 +97,15 @@ class SheetsManager:
             video_data: Dictionary with video details
         """
         videos_sheet = self.sheet.worksheet(SHEETS_CONFIG["videos_sheet"])
+        # Use filepath if available, otherwise url
+        video_url = video_data.get("filepath", video_data.get("url", ""))
         row = [
             video_data.get("topic", ""),
             video_data.get("type", ""),
             video_data.get("prompt", ""),
             video_data.get("video_id", ""),
             video_data.get("status", ""),
-            video_data.get("url", ""),
+            video_url,
             video_data.get("duration", "")
         ]
         videos_sheet.append_row(row)

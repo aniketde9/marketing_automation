@@ -9,7 +9,6 @@ from utils import (
     save_to_json, 
     format_timestamp, 
     print_summary, 
-    download_video, 
     logger,
     log_failure,
     get_failure_summary,
@@ -114,12 +113,7 @@ def main():
             for video in videos:
                 sheets.write_video_info(video)
             
-            # Auto-download videos
-            print(f"\n⬇️ Downloading {len(videos)} videos...")
-            for video in videos:
-                if video.get("url"):
-                    filename = f"{video['video_id']}.mp4"
-                    download_video(video['url'], filename)
+            # Videos are already downloaded by sora_generator.py
                     
         except Exception as e:
             logger.error(f"[VIDEO] Batch generation failed: {e}", exc_info=True)

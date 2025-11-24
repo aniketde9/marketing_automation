@@ -5,14 +5,7 @@ import google.generativeai as genai
 import json
 import time
 from config import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_RPM, BATCH_SIZE
-from prompts import (
-    get_short_post_prompt,
-    get_carousel_prompt,
-    get_thread_prompt,
-    get_linkedin_prompt
-)
 from utils import logger
-
 
 # Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
@@ -24,20 +17,28 @@ class GeminiGenerator:
         self.model = genai.GenerativeModel(GEMINI_MODEL)
         self.request_count = 0
         self.last_request_time = time.time()
+        logger.info(f"✅ Gemini {GEMINI_MODEL} initialized")
         print(f"✅ Gemini {GEMINI_MODEL} initialized")
     
     def _rate_limit_wait(self):
-        """Enforce rate limiting (2 RPM for Gemini 3.0)."""
+        """Enforce rate limiting (15 RPM for Gemini 2.5 Flash-Lite)."""
         elapsed = time.time() - self.last_request_time
-        wait_time = 60 / GEMINI_RPM  # 30 seconds between requests for 2 RPM
+        wait_time = 60 / GEMINI_RPM  # 4 seconds between requests for 15 RPM
         
         if elapsed < wait_time:
             sleep_duration = wait_time - elapsed
+            logger.info(f"⏳ Rate limit: waiting {sleep_duration:.1f}s...")
             print(f"⏳ Rate limit: waiting {sleep_duration:.1f}s...")
             time.sleep(sleep_duration)
         
         self.last_request_time = time.time()
         self.request_count += 1
+    
+    def _cooldown_wait(self):
+        """1 minute cooldown between successful generations."""
+        logger.info("😴 Cooldown: waiting 60s before next generation...")
+        print("😴 Cooldown: waiting 60s before next generation...")
+        time.sleep(60)
     
     def generate_content_batch(self, topics):
         """
@@ -51,7 +52,6 @@ class GeminiGenerator:
         """
         self._rate_limit_wait()
         
-        # Build comprehensive batch prompt
         topics_str = ", ".join(topics)
         
         prompt = f"""Generate social media content for these {len(topics)} topics.
@@ -88,11 +88,11 @@ Return ONLY valid JSON in this exact format:
 NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
 
         try:
-            logger.info(f"[BATCH] Generating content for topics: {topics}")
+            logger.info(f"[GEMINI] Generating batch for {len(topics)} topics")
             response = self.model.generate_content(prompt)
             response_text = response.text.strip()
             
-            # Clean response (remove markdown fences if present)
+            # Clean response
             if response_text.startswith("```json"):
                 response_text = response_text.replace("```json", "").replace("```", "")
             elif response_text.startswith("```"):
@@ -102,18 +102,21 @@ NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
             data = json.loads(response_text)
             content_list = data.get("content", [])
             
-            logger.info(f"[BATCH] Successfully generated content for {len(content_list)} topics")
+            logger.info(f"[GEMINI] ✅ Generated content for {len(content_list)} topics")
             print(f"✅ Generated content for {len(content_list)} topics")
+            
+            # 1 MINUTE COOLDOWN AFTER SUCCESS
+            self._cooldown_wait()
+            
             return content_list
             
         except json.JSONDecodeError as e:
-            logger.error(f"[BATCH] JSON parse error for topics {topics}: {e}", exc_info=True)
-            logger.debug(f"[BATCH] Response text: {response_text[:500]}...")
+            logger.error(f"[GEMINI] JSON parse error: {e}")
+            logger.error(f"Response preview: {response_text[:500]}...")
             print(f"❌ JSON parse error: {e}")
-            print(f"Response: {response_text[:500]}...")
             return []
         except Exception as e:
-            logger.error(f"[BATCH] Gemini API error for topics {topics}: {e}", exc_info=True)
+            logger.error(f"[GEMINI] API error: {e}", exc_info=True)
             print(f"❌ Gemini API error: {e}")
             return []
     
@@ -131,6 +134,7 @@ NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
         all_content = []
         total_batches = (len(topics_list) + batch_size - 1) // batch_size
         
+        logger.info(f"[GEMINI] Starting generation for {len(topics_list)} topics in {total_batches} batches")
         print(f"\n📝 Generating content for {len(topics_list)} topics in {total_batches} batches...")
         
         for i in range(0, len(topics_list), batch_size):
@@ -138,18 +142,17 @@ NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
             batch_num = i // batch_size + 1
             
             print(f"\n🔄 Batch {batch_num}/{total_batches}: {len(batch)} topics")
-            logger.info(f"[BATCH] Starting batch {batch_num}/{total_batches} with topics: {batch}")
+            logger.info(f"[GEMINI BATCH] Starting batch {batch_num}/{total_batches}")
             
             try:
                 content = self.generate_content_batch(batch)
                 all_content.extend(content)
-                logger.info(f"[BATCH] Success batch {batch_num}, generated: {len(content)} items")
+                logger.info(f"[GEMINI BATCH] ✅ Batch {batch_num} complete. Total: {len(all_content)}")
                 print(f"✅ Batch {batch_num} complete. Total generated: {len(all_content)}")
             except Exception as e:
-                logger.error(f"[BATCH] Error in batch {batch_num}: {e}", exc_info=True)
+                logger.error(f"[GEMINI BATCH] ❌ Batch {batch_num} failed: {e}", exc_info=True)
                 print(f"❌ Batch {batch_num} failed → {e}")
-                # Continue with next batch
                 continue
         
+        logger.info(f"[GEMINI] Generation complete. Total: {len(all_content)} pieces")
         return all_content
-
