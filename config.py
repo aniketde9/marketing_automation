@@ -8,25 +8,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Keys
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
 
 # Rate Limits
 GEMINI_RPM = int(os.getenv("GEMINI_RPM", 15))  # Gemini 2.5 Flash-Lite: 15 RPM
 GEMINI_RPD = int(os.getenv("GEMINI_RPD", 1000))  # Gemini 2.5 Flash-Lite: 1000 RPD
-SORA_DAILY_LIMIT = int(os.getenv("SORA_DAILY_LIMIT", 30))
 
 # Model Configuration
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
-SORA_DURATION = int(os.getenv("SORA_DURATION", 8))  # 8 seconds
-SORA_RESOLUTION = os.getenv("SORA_RESOLUTION", "720p")
 
 # Google Sheets Configuration
 SHEETS_CONFIG = {
     "topics_sheet": "Topics",
     "generated_sheet": "Generated_Posts",
-    "videos_sheet": "Videos",
     "schedule_sheet": "Schedule",
     "failed_sheet": "Failed"
 }
@@ -38,17 +33,13 @@ CONTENT_TYPES = ["x_thread", "x_post", "linkedin_post", "instagram_caption", "ca
 # Output Paths
 OUTPUT_DIR = "output"
 POSTS_DIR = os.path.join(OUTPUT_DIR, "posts")
-VIDEOS_DIR = os.path.join(OUTPUT_DIR, "videos")
 LOGS_DIR = "logs"
 
 # Create output directories if they don't exist
 os.makedirs(POSTS_DIR, exist_ok=True)
-os.makedirs(VIDEOS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Validation
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not found in .env file")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env file")
 if not GOOGLE_SHEET_ID:
@@ -56,7 +47,6 @@ if not GOOGLE_SHEET_ID:
 if not os.path.exists("credentials.json"):
     raise ValueError("credentials.json not found in project directory")
 
-print("✅ Configuration loaded successfully")
+print("Configuration loaded successfully")
 print(f"   Gemini Model: {GEMINI_MODEL}")
 print(f"   Gemini Rate Limits: {GEMINI_RPM} RPM, {GEMINI_RPD} RPD")
-print(f"   Sora Duration: {SORA_DURATION}s at {SORA_RESOLUTION}")

@@ -3,7 +3,6 @@ Google Sheets manager for reading/writing content.
 """
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import pandas as pd
 from config import GOOGLE_SHEET_ID, SHEETS_CONFIG
 
 
@@ -129,29 +128,7 @@ class SheetsManager:
         cell = topics_sheet.find(topic)
         if cell:
             topics_sheet.update_cell(cell.row, 3, status)  # Column C = Status
-    
-    def write_video_info(self, video_data):
-        """
-        Write video generation info to Videos sheet.
-        
-        Args:
-            video_data: Dictionary with video details
-        """
-        videos_sheet = self.sheet.worksheet(SHEETS_CONFIG["videos_sheet"])
-        # Use filepath if available, otherwise url
-        video_url = video_data.get("filepath", video_data.get("url", ""))
-        row = [
-            video_data.get("topic", ""),
-            video_data.get("type", ""),
-            video_data.get("prompt", ""),
-            video_data.get("video_id", ""),
-            video_data.get("status", ""),
-            video_url,
-            video_data.get("duration", "")
-        ]
-        videos_sheet.append_row(row)
-        print(f"✅ Logged video: {video_data.get('video_id')}")
-    
+
     def write_failed_topic(self, topic, content_type, error_message):
         """
         Log a failed topic to the Failed sheet.
