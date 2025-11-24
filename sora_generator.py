@@ -1,5 +1,6 @@
 """
 Sora 2 API handler for video generation.
+VERIFIED against official OpenAI documentation.
 """
 import openai
 import time
@@ -32,19 +33,19 @@ class SoraGenerator:
             logger.info(f"[SORA] Queueing {video_type} video for topic: {topic[:50]}")
             print(f"🎬 Queueing: {topic[:50]}...")
             
-            # CORRECT METHOD: .create() NOT .generate()
+            # CORRECT PARAMETERS (verified from official docs)
             response = self.client.videos.create(
                 model="sora-2",
                 prompt=prompt,
-                duration=SORA_DURATION
+                seconds=str(SORA_DURATION)  # Must be string, not int
             )
             
             video_id = response.id
             logger.info(f"[SORA] Video queued - ID: {video_id}, Type: {video_type}")
             print(f"✅ Queued: {video_id}")
             
-            # 1 MINUTE COOLDOWN AFTER SUCCESSFUL QUEUE
-            logger.info("😴 Cooldown: waiting 60s before next video queue...")
+            # 1 MINUTE COOLDOWN
+            logger.info("😴 Cooldown: waiting 60s...")
             print("😴 Cooldown: waiting 60s...")
             time.sleep(60)
             
@@ -53,8 +54,7 @@ class SoraGenerator:
                 "prompt": prompt,
                 "topic": topic,
                 "type": video_type,
-                "status": "queued",
-                "duration": SORA_DURATION
+                "status": "queued"
             }
             
         except Exception as e:
@@ -65,16 +65,18 @@ class SoraGenerator:
     def check_video_status(self, video_id):
         """Check status and download video if complete."""
         try:
+            # Retrieve video status
             response = self.client.videos.retrieve(video_id)
             
             if response.status == "completed":
-                # Download the video content
-                content = self.client.videos.download_content(video_id)
+                # Download video content using official method
+                logger.info(f"[SORA] Downloading video {video_id}...")
+                content = self.client.videos.download_content(video_id, variant="video")
                 
                 return {
                     "status": "completed",
                     "video_id": video_id,
-                    "content": content
+                    "content": content  # This is a file-like object
                 }
             else:
                 return {
@@ -83,19 +85,11 @@ class SoraGenerator:
                 }
                 
         except Exception as e:
-            logger.error(f"[SORA] Error checking status for {video_id}: {e}")
+            logger.error(f"[SORA] Error checking status for {video_id}: {e}", exc_info=True)
             return {"status": "error", "video_id": video_id}
     
     def generate_batch(self, topics_list):
-        """
-        Generate videos for batch of topics.
-        
-        Args:
-            topics_list: List of topics
-        
-        Returns:
-            List of completed video info with saved files
-        """
+        """Generate videos for batch of topics."""
         video_prompts = []
         topic_index = 0
         
@@ -112,7 +106,7 @@ class SoraGenerator:
         print(f"\n🎬 Queueing {len(video_prompts)} videos (60s cooldown between each)...")
         logger.info(f"[SORA BATCH] Starting batch with {len(video_prompts)} videos")
         
-        # Queue all videos (with 60s cooldown built into generate_video)
+        # Queue all videos
         video_ids = []
         for idx, video_prompt in enumerate(video_prompts, 1):
             print(f"\n[{idx}/{len(video_prompts)}] Queueing next video...")
@@ -122,7 +116,6 @@ class SoraGenerator:
             )
             if video_info:
                 video_ids.append(video_info)
-            # No extra sleep needed - already in generate_video()
         
         print(f"\n✅ Queued {len(video_ids)} videos. Polling for completion...")
         logger.info(f"[SORA BATCH] Queued {len(video_ids)} videos")
@@ -145,8 +138,8 @@ class SoraGenerator:
                     filepath = f"output/videos/{filename}"
                     
                     try:
-                        with open(filepath, 'wb') as f:
-                            f.write(status_info["content"])
+                        # Use the official write_to_file method
+                        status_info["content"].write_to_file(filepath)
                         
                         completed_videos.append({
                             **video_info,
@@ -154,20 +147,24 @@ class SoraGenerator:
                             "filepath": filepath
                         })
                         video_ids.remove(video_info)
-                        logger.info(f"[SORA] ✅ Completed & saved: {filename}")
+                        logger.info(f"[SORA] ✅ Saved: {filename}")
                         print(f"✅ Saved: {filename}")
                         
                     except Exception as e:
-                        logger.error(f"[SORA] Error saving {filename}: {e}")
+                        logger.error(f"[SORA] Error saving {filename}: {e}", exc_info=True)
                         print(f"❌ Error saving {filename}: {e}")
                         video_ids.remove(video_info)
                         
-                elif status_info["status"] == "error":
+                elif status_info["status"] == "error" or status_info["status"] == "failed":
                     logger.error(f"[SORA] ❌ Video failed: {video_info['video_id']}")
-                    video_ids.remove(video_info)
                     print(f"❌ Video failed: {video_info['video_id']}")
+                    video_ids.remove(video_info)
+                else:
+                    # Still in progress
+                    logger.info(f"[SORA] Video {video_info['video_id']}: {status_info['status']}")
             
             if video_ids:
+                print(f"⏳ {len(video_ids)} videos still processing. Waiting 30s...")
                 time.sleep(30)
         
         if poll_attempts >= max_polls:

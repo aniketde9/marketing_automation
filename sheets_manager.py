@@ -121,22 +121,26 @@ class SheetsManager:
             error_message: Error description
         """
         try:
-            # Try to get Failed sheet, create if doesn't exist
+            # Try to get existing Failed sheet
             try:
                 failed_sheet = self.sheet.worksheet("Failed")
             except:
-                # Create Failed sheet with headers
-                failed_sheet = self.sheet.add_worksheet(title="Failed", rows=1000, cols=5)
-                failed_sheet.append_row([
-                    "Timestamp",
-                    "Topic",
-                    "Content Type",
-                    "Error Message",
-                    "Status"
-                ])
-                print("✅ Created 'Failed' sheet")
+                # Only create if it doesn't exist
+                try:
+                    failed_sheet = self.sheet.add_worksheet(title="Failed", rows=1000, cols=5)
+                    failed_sheet.append_row([
+                        "Timestamp",
+                        "Topic",
+                        "Content Type",
+                        "Error Message",
+                        "Status"
+                    ])
+                    print("✅ Created 'Failed' sheet")
+                except Exception as create_error:
+                    # Sheet might exist but couldn't be fetched - try again
+                    failed_sheet = self.sheet.worksheet("Failed")
             
-            # Get current timestamp
+            # Get timestamp
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
@@ -145,14 +149,17 @@ class SheetsManager:
                 timestamp,
                 topic,
                 content_type,
-                str(error_message)[:500],  # Truncate long errors
+                str(error_message)[:500],
                 "Pending Retry"
             ])
             
             print(f"📝 Logged failure: {topic} ({content_type})")
             
         except Exception as e:
-            print(f"⚠️ Could not log failure to sheet: {e}")
+            # Don't crash if logging fails
+            from utils import logger
+            logger.warning(f"Could not log failure to sheet: {e}")
+            print(f"⚠️ Could not log failure to sheet (continuing anyway)")
     
     def get_failed_topics(self, status="Pending Retry"):
         """
