@@ -5,6 +5,7 @@ import openai
 import time
 from config import OPENAI_API_KEY, SORA_DURATION, SORA_RESOLUTION
 from prompts import get_video_prompt, VIDEO_TYPES
+from utils import logger
 
 
 openai.api_key = OPENAI_API_KEY
@@ -30,6 +31,7 @@ class SoraGenerator:
         try:
             # Get customized prompt from prompts module
             prompt = get_video_prompt(topic, video_type)
+            logger.info(f"[SORA] Queueing {video_type} video for topic: {topic}")
             
             print(f"🎬 Generating {video_type} video: {topic[:50]}...")
             
@@ -41,6 +43,7 @@ class SoraGenerator:
             )
             
             video_id = response.id
+            logger.info(f"[SORA] Queued video_id={video_id} type={video_type} topic={topic}")
             print(f"✅ Video queued: {video_id} ({video_type})")
             
             return {
@@ -53,6 +56,7 @@ class SoraGenerator:
             }
             
         except Exception as e:
+            logger.error(f"[SORA] Error queueing video for topic '{topic}': {e}", exc_info=True)
             print(f"❌ Sora API error: {e}")
             return None
     
@@ -120,6 +124,8 @@ class SoraGenerator:
             )
             if video_info:
                 video_ids.append(video_info)
+            else:
+                logger.warning(f"[SORA] Skipping failed video for topic: {video_prompt['topic']}")
             time.sleep(1)
         
         print(f"✅ {len(video_ids)} videos queued. Polling for completion...")
@@ -133,8 +139,10 @@ class SoraGenerator:
                 if status_info["status"] == "completed":
                     completed_videos.append({**video_info, **status_info})
                     video_ids.remove(video_info)
+                    logger.info(f"[SORA] Completed video_id={status_info['video_id']}")
                     print(f"✅ Video complete: {status_info['video_id']}")
                 elif status_info["status"] == "error":
+                    logger.error(f"[SORA] Video error for id={video_info['video_id']}")
                     video_ids.remove(video_info)
                     print(f"❌ Video failed: {video_info['video_id']}")
             

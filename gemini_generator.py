@@ -11,6 +11,7 @@ from prompts import (
     get_thread_prompt,
     get_linkedin_prompt
 )
+from utils import logger
 
 
 # Configure Gemini
@@ -87,6 +88,7 @@ Return ONLY valid JSON in this exact format:
 NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
 
         try:
+            logger.info(f"[BATCH] Generating content for topics: {topics}")
             response = self.model.generate_content(prompt)
             response_text = response.text.strip()
             
@@ -100,14 +102,18 @@ NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
             data = json.loads(response_text)
             content_list = data.get("content", [])
             
+            logger.info(f"[BATCH] Successfully generated content for {len(content_list)} topics")
             print(f"✅ Generated content for {len(content_list)} topics")
             return content_list
             
         except json.JSONDecodeError as e:
+            logger.error(f"[BATCH] JSON parse error for topics {topics}: {e}", exc_info=True)
+            logger.debug(f"[BATCH] Response text: {response_text[:500]}...")
             print(f"❌ JSON parse error: {e}")
             print(f"Response: {response_text[:500]}...")
             return []
         except Exception as e:
+            logger.error(f"[BATCH] Gemini API error for topics {topics}: {e}", exc_info=True)
             print(f"❌ Gemini API error: {e}")
             return []
     
@@ -132,11 +138,18 @@ NO MARKDOWN, NO EXPLANATIONS, ONLY THE JSON."""
             batch_num = i // batch_size + 1
             
             print(f"\n🔄 Batch {batch_num}/{total_batches}: {len(batch)} topics")
+            logger.info(f"[BATCH] Starting batch {batch_num}/{total_batches} with topics: {batch}")
             
-            content = self.generate_content_batch(batch)
-            all_content.extend(content)
-            
-            print(f"✅ Batch {batch_num} complete. Total generated: {len(all_content)}")
+            try:
+                content = self.generate_content_batch(batch)
+                all_content.extend(content)
+                logger.info(f"[BATCH] Success batch {batch_num}, generated: {len(content)} items")
+                print(f"✅ Batch {batch_num} complete. Total generated: {len(all_content)}")
+            except Exception as e:
+                logger.error(f"[BATCH] Error in batch {batch_num}: {e}", exc_info=True)
+                print(f"❌ Batch {batch_num} failed → {e}")
+                # Continue with next batch
+                continue
         
         return all_content
 
