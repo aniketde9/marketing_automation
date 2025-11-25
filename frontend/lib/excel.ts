@@ -82,12 +82,14 @@ export async function generateTemplateExcel(): Promise<Buffer> {
   return Buffer.from(buffer);
 }
 
-export async function parseUploadedExcel(buffer: Buffer): Promise<{
+export async function parseUploadedExcel(buffer: Buffer | ArrayBuffer): Promise<{
   topics: Array<{ row: number; topic: string; contentType: string }>;
   count: number;
 }> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  // Convert to Node.js Buffer if needed
+  const nodeBuffer = buffer instanceof Buffer ? buffer : Buffer.from(buffer);
+  await workbook.xlsx.load(nodeBuffer);
 
   const topicsSheet = workbook.getWorksheet('Topics');
   if (!topicsSheet) {
