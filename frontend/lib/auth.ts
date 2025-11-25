@@ -52,12 +52,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return false;
     },
     async jwt({ token, user }) {
-      if (user) {
+      if (user?.email) {
         const dbUser = await sql`
-          SELECT id FROM users WHERE email = ${user.email}
+          SELECT id, gemini_api_key_encrypted FROM users WHERE email = ${user.email}
         `;
         if (dbUser.length > 0) {
           token.id = dbUser[0].id;
+          token.hasApiKey = Boolean(dbUser[0].gemini_api_key_encrypted);
         }
       }
       return token;
@@ -65,6 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.hasApiKey = Boolean(token.hasApiKey);
       }
       return session;
     },
