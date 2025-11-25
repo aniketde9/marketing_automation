@@ -87,9 +87,7 @@ export async function parseUploadedExcel(buffer: Buffer): Promise<{
   count: number;
 }> {
   const workbook = new ExcelJS.Workbook();
-  // Convert to ArrayBuffer for ExcelJS
-  const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-  await workbook.xlsx.load(arrayBuffer);
+  await workbook.xlsx.load(buffer as any);
 
   const topicsSheet = workbook.getWorksheet('Topics');
   if (!topicsSheet) {
@@ -115,10 +113,6 @@ export async function parseUploadedExcel(buffer: Buffer): Promise<{
       (d) => i >= d.start && i <= d.end
     );
 
-    if (!dist) {
-      console.warn(`Row ${i} is outside defined ranges, using 'Mixed' as default`);
-    }
-
     topics.push({
       row: i,
       topic,
@@ -129,8 +123,6 @@ export async function parseUploadedExcel(buffer: Buffer): Promise<{
   if (topics.length === 0) {
     throw new Error('No topics found. Please fill at least one topic in the Topics sheet.');
   }
-
-  console.log(`✅ Parsed ${topics.length} topics from Excel`);
 
   return {
     topics,
