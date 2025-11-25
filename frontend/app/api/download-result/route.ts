@@ -34,13 +34,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch generated content (only non-empty)
-    const content = await sql`
+    // Fetch generated content with proper typing
+    const contentRaw = await sql`
       SELECT row_number, topic, content_type, generated_text
       FROM generated_content
       WHERE job_id = ${jobId} AND generated_text != ''
       ORDER BY row_number ASC
     `;
+
+    // Type assertion to match generateResultExcel expected type
+    const content = contentRaw as Array<{
+      row_number: number;
+      topic: string;
+      content_type: string;
+      generated_text: string;
+    }>;
 
     if (content.length === 0) {
       return NextResponse.json(
@@ -52,7 +60,7 @@ export async function GET(req: NextRequest) {
     console.log(`Generating Excel with ${content.length} posts for job ${jobId}`);
 
     // Prepare data for Excel generation
-    const topics = content.map((c: any) => ({
+    const topics = content.map((c) => ({
       row: c.row_number,
       topic: c.topic,
       contentType: c.content_type,
