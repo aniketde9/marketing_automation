@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { SessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { WorkerWakeup } from "@/components/worker-wakeup";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -24,6 +25,7 @@ export default function RootLayout({
         className={cn("bg-background font-sans antialiased", inter.variable)}
         suppressHydrationWarning
       >
+        <WorkerWakeup />
         <SessionProvider>{children}</SessionProvider>
         <Toaster />
       </body>
