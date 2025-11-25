@@ -28,20 +28,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google' && user.email) {
+      if (account?.provider === 'google' && user.email && account.providerAccountId) {
         try {
-          // Check if user exists
-          const existingUser = await sql`
-            SELECT id FROM users WHERE email = ${user.email}
+          // Upsert user (create or update)
+          await sql`
+            INSERT INTO users (email, google_id, name, created_at)
+            VALUES (${user.email}, ${account.providerAccountId}, ${user.name || null}, NOW())
+            ON CONFLICT (google_id)
+            DO UPDATE SET
+              email = EXCLUDED.email,
+              name = EXCLUDED.name,
+              updated_at = NOW()
           `;
-
-          if (existingUser.length === 0) {
-            // Create new user
-            await sql`
-              INSERT INTO users (email, name, created_at)
-              VALUES (${user.email}, ${user.name || ''}, NOW())
-            `;
-          }
           
           return true;
         } catch (error) {
