@@ -12,9 +12,11 @@ __pycache__/
 
 # Output files
 output/
-*.json
 *.csv
 *.mp4
+# Note: package.json and package-lock.json should be committed
+# Only ignore JSON files in output/ directory
+output/**/*.json
 
 # Logs
 logs/
