@@ -1,16 +1,16 @@
-'use client';
-
 import * as React from 'react';
-import { ToastActionElement, type ToastProps } from '@radix-ui/react-toast';
+import type * as ToastPrimitives from '@radix-ui/react-toast';
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000;
 
-type ToasterToast = ToastProps & {
+type ToasterToast = {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  action?: ToastActionElement;
+  action?: React.ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const actionTypes = {
@@ -19,6 +19,13 @@ const actionTypes = {
   DISMISS_TOAST: 'DISMISS_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
 } as const;
+
+let count = 0;
+
+function genId() {
+  count = (count + 1) % Number.MAX_VALUE;
+  return count.toString();
+}
 
 type ActionType = typeof actionTypes;
 
@@ -54,31 +61,31 @@ const addToRemoveQueue = (toastId: string) => {
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId);
     dispatch({
-      type: actionTypes.REMOVE_TOAST,
-      toastId,
+      type: 'REMOVE_TOAST',
+      toastId: toastId,
     });
   }, TOAST_REMOVE_DELAY);
 
   toastTimeouts.set(toastId, timeout);
 };
 
-const reducer = (state: State, action: Action): State => {
+export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case actionTypes.ADD_TOAST:
+    case 'ADD_TOAST':
       return {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       };
 
-    case actionTypes.UPDATE_TOAST:
+    case 'UPDATE_TOAST':
       return {
         ...state,
-        toasts: state.toasts.map((toast) =>
-          toast.id === action.toast.id ? { ...toast, ...action.toast } : toast,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
         ),
       };
 
-    case actionTypes.DISMISS_TOAST: {
+    case 'DISMISS_TOAST': {
       const { toastId } = action;
 
       if (toastId) {
@@ -91,12 +98,17 @@ const reducer = (state: State, action: Action): State => {
 
       return {
         ...state,
-        toasts: state.toasts.map((toast) =>
-          toast.id === toastId || toastId === undefined ? { ...toast, open: false } : toast,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
         ),
       };
     }
-    case actionTypes.REMOVE_TOAST:
+    case 'REMOVE_TOAST':
       if (action.toastId === undefined) {
         return {
           ...state,
@@ -105,10 +117,8 @@ const reducer = (state: State, action: Action): State => {
       }
       return {
         ...state,
-        toasts: state.toasts.filter((toast) => toast.id !== action.toastId),
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
       };
-    default:
-      return state;
   }
 };
 
@@ -126,17 +136,17 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
-  const id = crypto.randomUUID();
+  const id = genId();
 
-  const update = (toastProps: ToasterToast) =>
+  const update = (props: ToasterToast) =>
     dispatch({
-      type: actionTypes.UPDATE_TOAST,
-      toast: { ...toastProps, id },
+      type: 'UPDATE_TOAST',
+      toast: { ...props, id },
     });
-  const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
+  const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
   dispatch({
-    type: actionTypes.ADD_TOAST,
+    type: 'ADD_TOAST',
     toast: {
       ...props,
       id,
@@ -148,7 +158,7 @@ function toast({ ...props }: Toast) {
   });
 
   return {
-    id,
+    id: id,
     dismiss,
     update,
   };
@@ -170,9 +180,8 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
   };
 }
 
 export { useToast, toast };
-
