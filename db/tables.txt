@@ -1,0 +1,6 @@
+files
+generated_content
+jobs
+prompts
+user_generation_log
+users

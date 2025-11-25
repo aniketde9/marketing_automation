@@ -32,3 +32,8 @@ Thumbs.db
 
 
 
+
+# Frontend build artifacts
+frontend/.next/
+frontend/node_modules/
+
