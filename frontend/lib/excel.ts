@@ -29,7 +29,7 @@ export async function generateTemplateExcel(): Promise<Buffer> {
   };
 
   CONTENT_DISTRIBUTION.forEach((dist) => {
-    for (let row = dist.start; row <= dist.end; row += 1) {
+    for (let row = dist.start; row <= dist.end; row++) {
       topicsSheet.addRow({
         topic: '',
         type: dist.type,
@@ -52,7 +52,7 @@ export async function generateTemplateExcel(): Promise<Buffer> {
     '📊 CONTENT DISTRIBUTION:',
     '',
     ...CONTENT_DISTRIBUTION.map(
-      (d) => `Rows ${d.start}-${d.end}: ${d.type} (${d.count} topics max)`,
+      (d) => `Rows ${d.start}-${d.end}: ${d.type} (${d.count} topics max)`
     ),
     '',
     '⚠️ IMPORTANT:',
@@ -82,14 +82,14 @@ export async function generateTemplateExcel(): Promise<Buffer> {
   return Buffer.from(buffer);
 }
 
-export async function parseUploadedExcel(buffer: Buffer | ArrayBuffer): Promise<{
+export async function parseUploadedExcel(buffer: Buffer): Promise<{
   topics: Array<{ row: number; topic: string; contentType: string }>;
   count: number;
 }> {
   const workbook = new ExcelJS.Workbook();
-  // Convert to Node.js Buffer if needed
-  const nodeBuffer = buffer instanceof Buffer ? buffer : Buffer.from(buffer);
-  await workbook.xlsx.load(nodeBuffer);
+  // Convert to ArrayBuffer for ExcelJS
+  const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+  await workbook.xlsx.load(arrayBuffer);
 
   const topicsSheet = workbook.getWorksheet('Topics');
   if (!topicsSheet) {
@@ -98,29 +98,25 @@ export async function parseUploadedExcel(buffer: Buffer | ArrayBuffer): Promise<
 
   const topics: Array<{ row: number; topic: string; contentType: string }> = [];
 
-  // Read rows 2-201 but ONLY collect non-empty topics
-  for (let i = 2; i <= 201; i += 1) {
+  for (let i = 2; i <= 201; i++) {
     const row = topicsSheet.getRow(i);
     const topicValue = row.getCell(1).value;
-
-    // Handle various cell value types
+    
     let topic = '';
     if (topicValue) {
       topic = topicValue.toString().trim();
     }
 
-    // Skip empty rows
     if (!topic) {
-      continue; // This is the key change - we SKIP empty rows instead of erroring
+      continue;
     }
 
-    // Find the content type for this row number
     const dist = CONTENT_DISTRIBUTION.find(
       (d) => i >= d.start && i <= d.end
     );
 
     if (!dist) {
-      console.warn(`Row ${i} is outside defined ranges, using 'Mixed (All Formats)' as default`);
+      console.warn(`Row ${i} is outside defined ranges, using 'Mixed' as default`);
     }
 
     topics.push({
@@ -130,7 +126,6 @@ export async function parseUploadedExcel(buffer: Buffer | ArrayBuffer): Promise<
     });
   }
 
-  // Validate we have at least 1 topic
   if (topics.length === 0) {
     throw new Error('No topics found. Please fill at least one topic in the Topics sheet.');
   }
@@ -150,11 +145,10 @@ export async function generateResultExcel(
     topic: string;
     content_type: string;
     generated_text: string;
-  }>,
+  }>
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
 
-  // Topics Sheet (original)
   const topicsSheet = workbook.addWorksheet('Topics');
   topicsSheet.columns = [
     { header: 'Row', key: 'row', width: 10 },
@@ -170,7 +164,6 @@ export async function generateResultExcel(
     });
   });
 
-  // Generated Content Sheet
   const contentSheet = workbook.addWorksheet('Generated_Content');
   contentSheet.columns = [
     { header: 'Row', key: 'row', width: 8 },
@@ -190,7 +183,6 @@ export async function generateResultExcel(
     });
   });
 
-  // Summary Sheet
   const summarySheet = workbook.addWorksheet('Summary');
   summarySheet.columns = [
     { header: 'Metric', key: 'metric', width: 30 },
@@ -204,16 +196,3 @@ export async function generateResultExcel(
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
-
-export function getContentType(row: number): string {
-  if (row >= 2 && row <= 31) return 'carousel';
-  if (row >= 32 && row <= 51) return 'thread_x';
-  if (row >= 52 && row <= 71) return 'carousel';
-  if (row >= 72 && row <= 91) return 'short_linkedin';
-  if (row >= 92 && row <= 111) return 'short_x';
-  if (row >= 112 && row <= 151) return 'short_instagram';
-  if (row >= 152 && row <= 161) return 'mixed';
-  if (row >= 162 && row <= 201) return 'short_posts';
-  return 'unknown';
-}
-
