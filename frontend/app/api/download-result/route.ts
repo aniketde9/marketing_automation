@@ -69,12 +69,15 @@ export async function GET(req: NextRequest) {
     // Generate Excel buffer
     const buffer = await generateResultExcel(topics, content);
 
+    // Convert Buffer to Uint8Array for NextResponse
+    const uint8Array = new Uint8Array(buffer);
+
     // Generate filename with date
     const date = new Date(job[0].created_at).toISOString().split('T')[0];
     const filename = `marketing_content_${date}_${content.length}_posts.xlsx`;
 
-    // Return Excel file directly (no database storage)
-    return new NextResponse(buffer, {
+    // Return Excel file directly
+    return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
