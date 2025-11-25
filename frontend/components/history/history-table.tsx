@@ -52,7 +52,6 @@ export function HistoryTable({ initialJobs }: HistoryTableProps) {
       });
     } catch (error) {
       toast({
-        variant: "destructive",
         title: "Delete failed",
         description: error instanceof Error ? error.message : "Unknown error",
       });

@@ -73,7 +73,6 @@ export function ApiKeyForm({ initialHasKey }: ApiKeyFormProps) {
       router.refresh();
     } catch (error) {
       toast({
-        variant: "destructive",
         title: "Failed to validate key",
         description: error instanceof Error ? error.message : "Unknown error",
       });

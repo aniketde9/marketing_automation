@@ -89,7 +89,6 @@ export function GenerateClient() {
       });
     } catch (error) {
       toast({
-        variant: 'destructive',
         title: 'Upload failed',
         description: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -127,7 +126,6 @@ export function GenerateClient() {
             });
           } else {
             toast({
-              variant: 'destructive',
               title: 'Job failed',
               description: job.error_message || 'Check worker logs for more details.',
             });
@@ -142,7 +140,6 @@ export function GenerateClient() {
   const startGeneration = async () => {
     if (!topics.length) {
       toast({
-        variant: 'destructive',
         title: 'No topics loaded',
         description: 'Upload the filled template first.',
       });
@@ -172,7 +169,6 @@ export function GenerateClient() {
       });
     } catch (error) {
       toast({
-        variant: 'destructive',
         title: 'Unable to start job',
         description: error instanceof Error ? error.message : 'Unknown error',
       });

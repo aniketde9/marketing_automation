@@ -74,7 +74,6 @@ export function PromptManager() {
         }
       } catch {
         toast({
-          variant: "destructive",
           title: "Unable to load prompts",
           description: "Please refresh and try again.",
         });
@@ -104,7 +103,6 @@ export function PromptManager() {
       toast({ title: "Prompts updated", description: "New defaults will be used immediately." });
     } catch (error) {
       toast({
-        variant: "destructive",
         title: "Save failed",
         description: error instanceof Error ? error.message : "Unknown error",
       });
@@ -125,7 +123,6 @@ export function PromptManager() {
       toast({ title: "Prompts reset", description: "Default templates restored." });
     } catch (error) {
       toast({
-        variant: "destructive",
         title: "Reset failed",
         description: error instanceof Error ? error.message : "Unknown error",
       });
